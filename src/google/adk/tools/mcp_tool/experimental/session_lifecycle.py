@@ -91,7 +91,7 @@ class SessionLifecycle:
     if self._task.cancelled():
       raise ConnectionError('MCP session creation cancelled')
 
-    if self._task.exception():
+    if self._task.done() and self._task.exception():
       raise ConnectionError(
           f'Failed to create MCP session: {self._task.exception()}'
       ) from self._task.exception()
