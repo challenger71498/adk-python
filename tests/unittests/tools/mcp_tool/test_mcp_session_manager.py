@@ -235,18 +235,18 @@ class TestMCPSessionManager:
           # Setup mocks
           mock_exit_stack_class.return_value = mock_exit_stack
           mock_stdio.return_value = AsyncMock()
-          
+
           # Mock SessionContext using MockSessionContext
           # Create a mock session that will be returned by SessionContext
           mock_session = AsyncMock()
           mock_session_context = MockSessionContext(session=mock_session)
           mock_session_context_class.return_value = mock_session_context
-          
+
           # enter_async_context calls __aenter__ on the context manager
           # and returns the result (which is mock_session)
           async def enter_context(context_manager):
             return await context_manager.__aenter__()
-          
+
           mock_exit_stack.enter_async_context = AsyncMock(
               side_effect=enter_context
           )
@@ -304,7 +304,9 @@ class TestMCPSessionManager:
 
     # Mock SessionContext
     mock_session_context = AsyncMock()
-    mock_session_context.__aenter__ = AsyncMock(return_value=MockClientSession())
+    mock_session_context.__aenter__ = AsyncMock(
+        return_value=MockClientSession()
+    )
     mock_session_context.__aexit__ = AsyncMock(return_value=False)
     mock_session_context_class.return_value = mock_session_context
 

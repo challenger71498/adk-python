@@ -21,9 +21,7 @@ from unittest.mock import AsyncMock
 from unittest.mock import Mock
 from unittest.mock import patch
 
-from google.adk.tools.mcp_tool.session_context import (
-    SessionContext,
-)
+from google.adk.tools.mcp_tool.session_context import SessionContext
 from mcp import ClientSession
 import pytest
 
@@ -87,12 +85,12 @@ class TestSessionContext:
 
     # Mock ClientSession
     mock_session = MockClientSession()
-    
+
     with patch(
         'google.adk.tools.mcp_tool.session_context.ClientSession'
     ) as mock_session_class:
       mock_session_class.return_value = mock_session
-      
+
       session = await session_context.start()
 
       # Verify ready_event was set
@@ -270,7 +268,9 @@ class TestSessionContext:
 
     mock_session.initialize = slow_initialize
 
-    with patch('google.adk.tools.mcp_tool.session_context.ClientSession') as mock_session_class:
+    with patch(
+        'google.adk.tools.mcp_tool.session_context.ClientSession'
+    ) as mock_session_class:
       mock_session_class.return_value = mock_session
 
       with pytest.raises(ConnectionError) as exc_info:
@@ -455,6 +455,7 @@ class TestSessionContext:
 
     # Create a mock session that raises during exit
     class FailingMockSession(MockClientSession):
+
       async def __aexit__(self, exc_type, exc_val, exc_tb):
         raise RuntimeError('Cleanup failed')
 
