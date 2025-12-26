@@ -81,7 +81,9 @@ class TestSessionContext:
   async def test_start_success_ready_event_set_and_session_returned(self):
     """Test that start() sets _ready_event and returns session."""
     mock_client = MockClient()
-    session_context = SessionContext(mock_client, timeout=5.0, sse_read_timeout=None)
+    session_context = SessionContext(
+        mock_client, timeout=5.0, sse_read_timeout=None
+    )
 
     # Mock ClientSession
     mock_session = MockClientSession()
@@ -115,7 +117,9 @@ class TestSessionContext:
     """Test that start() raises ConnectionError when exception occurs."""
     test_exception = ValueError('Connection failed')
     mock_client = MockClient(raise_on_enter=test_exception)
-    session_context = SessionContext(mock_client, timeout=5.0, sse_read_timeout=None)
+    session_context = SessionContext(
+        mock_client, timeout=5.0, sse_read_timeout=None
+    )
 
     with pytest.raises(ConnectionError) as exc_info:
       await session_context.start()
@@ -131,7 +135,9 @@ class TestSessionContext:
   async def test_start_raises_connection_error_on_cancelled_error(self):
     """Test that start() raises ConnectionError when CancelledError occurs."""
     mock_client = MockClient()
-    session_context = SessionContext(mock_client, timeout=5.0, sse_read_timeout=None)
+    session_context = SessionContext(
+        mock_client, timeout=5.0, sse_read_timeout=None
+    )
 
     # Mock session that will cause cancellation
     mock_session = MockClientSession()
@@ -162,7 +168,9 @@ class TestSessionContext:
   async def test_close_cleans_up_task(self):
     """Test that close() properly cleans up the task."""
     mock_client = MockClient()
-    session_context = SessionContext(mock_client, timeout=5.0, sse_read_timeout=None)
+    session_context = SessionContext(
+        mock_client, timeout=5.0, sse_read_timeout=None
+    )
 
     # Mock ClientSession
     mock_session = MockClientSession()
@@ -196,7 +204,9 @@ class TestSessionContext:
   async def test_session_exception_does_not_break_event_loop(self):
     """Test that session exceptions don't break the event loop."""
     mock_client = MockClient()
-    session_context = SessionContext(mock_client, timeout=5.0, sse_read_timeout=None)
+    session_context = SessionContext(
+        mock_client, timeout=5.0, sse_read_timeout=None
+    )
 
     # Mock ClientSession that raises exception during use
     mock_session = MockClientSession()
@@ -248,7 +258,9 @@ class TestSessionContext:
     """Test timeout during client connection."""
     # Client that takes longer than timeout
     mock_client = MockClient(delay_on_enter=10.0)
-    session_context = SessionContext(mock_client, timeout=0.1, sse_read_timeout=None)
+    session_context = SessionContext(
+        mock_client, timeout=0.1, sse_read_timeout=None
+    )
 
     with pytest.raises(ConnectionError) as exc_info:
       await session_context.start()
@@ -259,7 +271,9 @@ class TestSessionContext:
   async def test_timeout_during_initialization(self):
     """Test timeout during session initialization."""
     mock_client = MockClient()
-    session_context = SessionContext(mock_client, timeout=0.1, sse_read_timeout=None)
+    session_context = SessionContext(
+        mock_client, timeout=0.1, sse_read_timeout=None
+    )
 
     # Mock ClientSession with slow initialize
     mock_session = MockClientSession()
@@ -349,7 +363,9 @@ class TestSessionContext:
       # Verify ClientSession was called with sse_read_timeout
       call_args = mock_session_class.call_args
       assert 'read_timeout_seconds' in call_args.kwargs
-      assert call_args.kwargs['read_timeout_seconds'] == timedelta(seconds=300.0)
+      assert call_args.kwargs['read_timeout_seconds'] == timedelta(
+          seconds=300.0
+      )
 
       await session_context.close()
 
@@ -357,7 +373,9 @@ class TestSessionContext:
   async def test_close_multiple_times(self):
     """Test that close() can be called multiple times safely."""
     mock_client = MockClient()
-    session_context = SessionContext(mock_client, timeout=5.0, sse_read_timeout=None)
+    session_context = SessionContext(
+        mock_client, timeout=5.0, sse_read_timeout=None
+    )
 
     mock_session = MockClientSession()
 
@@ -380,7 +398,9 @@ class TestSessionContext:
   async def test_close_before_start(self):
     """Test that close() works even if start() was never called."""
     mock_client = MockClient()
-    session_context = SessionContext(mock_client, timeout=5.0, sse_read_timeout=None)
+    session_context = SessionContext(
+        mock_client, timeout=5.0, sse_read_timeout=None
+    )
 
     # Close before starting should not raise
     await session_context.close()
@@ -391,7 +411,9 @@ class TestSessionContext:
   async def test_start_after_close(self):
     """Test behavior when start() is called after close()."""
     mock_client = MockClient()
-    session_context = SessionContext(mock_client, timeout=5.0, sse_read_timeout=None)
+    session_context = SessionContext(
+        mock_client, timeout=5.0, sse_read_timeout=None
+    )
 
     mock_session = MockClientSession()
 
@@ -418,7 +440,9 @@ class TestSessionContext:
   async def test_session_property(self):
     """Test that session property returns the managed session."""
     mock_client = MockClient()
-    session_context = SessionContext(mock_client, timeout=5.0, sse_read_timeout=None)
+    session_context = SessionContext(
+        mock_client, timeout=5.0, sse_read_timeout=None
+    )
 
     # Initially None
     assert session_context.session is None
@@ -442,7 +466,9 @@ class TestSessionContext:
     """Test that client is properly cleaned up even when exception occurs."""
     test_exception = RuntimeError('Test error')
     mock_client = MockClient(raise_on_enter=test_exception)
-    session_context = SessionContext(mock_client, timeout=5.0, sse_read_timeout=None)
+    session_context = SessionContext(
+        mock_client, timeout=5.0, sse_read_timeout=None
+    )
 
     with pytest.raises(ConnectionError):
       await session_context.start()
@@ -457,7 +483,9 @@ class TestSessionContext:
   async def test_close_handles_cancelled_error(self):
     """Test that close() handles CancelledError gracefully."""
     mock_client = MockClient()
-    session_context = SessionContext(mock_client, timeout=5.0, sse_read_timeout=None)
+    session_context = SessionContext(
+        mock_client, timeout=5.0, sse_read_timeout=None
+    )
 
     mock_session = MockClientSession()
 
@@ -482,7 +510,9 @@ class TestSessionContext:
   async def test_close_handles_exception_during_cleanup(self):
     """Test that close() handles exceptions during cleanup gracefully."""
     mock_client = MockClient()
-    session_context = SessionContext(mock_client, timeout=5.0, sse_read_timeout=None)
+    session_context = SessionContext(
+        mock_client, timeout=5.0, sse_read_timeout=None
+    )
 
     # Create a mock session that raises during exit
     class FailingMockSession(MockClientSession):

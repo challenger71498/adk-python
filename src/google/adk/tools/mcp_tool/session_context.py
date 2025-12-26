@@ -138,7 +138,9 @@ class SessionContext:
           session = await exit_stack.enter_async_context(
               ClientSession(
                   *transports[:2],
-                  read_timeout_seconds=timedelta(seconds=self._timeout),
+                  read_timeout_seconds=timedelta(seconds=self._timeout)
+                  if self._timeout is not None
+                  else None,
               )
           )
         else:
@@ -146,8 +148,10 @@ class SessionContext:
           # instead of the connection timeout as the read_timeout for the session.
           session = await exit_stack.enter_async_context(
               ClientSession(
-                *transports[:2],
-                read_timeout_seconds=timedelta(seconds=self._sse_read_timeout),
+                  *transports[:2],
+                  read_timeout_seconds=timedelta(seconds=self._sse_read_timeout)
+                  if self._sse_read_timeout is not None
+                  else None,
               )
           )
         await asyncio.wait_for(session.initialize(), timeout=self._timeout)
