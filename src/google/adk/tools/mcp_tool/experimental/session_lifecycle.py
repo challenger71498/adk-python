@@ -155,9 +155,6 @@ class SessionLifecycle:
 
         # Wait for close signal - the session remains valid while we wait
         await self._close_event.wait()
-
-        # When we exit this block, AsyncExitStack will clean up the session
-        # and client in the same task where they were created
     except BaseException as e:
       logger.error('Error during session lifecycle: %s', e)
       raise
