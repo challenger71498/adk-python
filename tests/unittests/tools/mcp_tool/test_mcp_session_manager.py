@@ -397,11 +397,11 @@ class TestMCPSessionManager:
     mock_session_context.__aexit__ = AsyncMock(return_value=False)
     mock_session_context_class.return_value = mock_session_context
 
-    # Create session in a different task
+    # Create session in a new task
     await asyncio.create_task(manager.create_session())
 
-    # Close session in the current task
-    await manager.close()
+    # Close session in another task
+    await asyncio.create_task(manager.close())
 
     # Verify session was closed
     assert not manager._sessions
