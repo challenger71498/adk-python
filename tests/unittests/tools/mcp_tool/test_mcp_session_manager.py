@@ -377,7 +377,34 @@ class TestMCPSessionManager:
     error_output = custom_errlog.getvalue()
     assert "Warning: Error during MCP session cleanup" in error_output
     assert "Close error 1" in error_output
+  
+  @pytest.mark.asyncio
+  @patch("google.adk.tools.mcp_tool.mcp_session_manager.stdio_client")
+  @patch("google.adk.tools.mcp_tool.mcp_session_manager.AsyncExitStack")
+  @patch("google.adk.tools.mcp_tool.mcp_session_manager.SessionContext")
+  async def test_create_and_close_session_in_different_task(
+    self, mock_stdio, mock_exit_stack_class, mock_session_context_class
+  ):
+    """Test creating and closing a session in different tasks."""
+    manager = MCPSessionManager(self.mock_stdio_connection_params)
 
+    mock_exit_stack_class.return_value = MockAsyncExitStack()
+    mock_stdio.return_value = AsyncMock()
+
+    # Mock SessionContext
+    mock_session_context = AsyncMock()
+    mock_session_context.__aenter__ = AsyncMock(return_value=MockClientSession())
+    mock_session_context.__aexit__ = AsyncMock(return_value=False)
+    mock_session_context_class.return_value = mock_session_context
+
+    # Create session in a different task
+    await asyncio.create_task(manager.create_session())
+
+    # Close session in the current task
+    await manager.close()
+
+    # Verify session was closed
+    assert not manager._sessions
 
 def test_retry_on_errors_decorator():
   """Test the retry_on_errors decorator."""
