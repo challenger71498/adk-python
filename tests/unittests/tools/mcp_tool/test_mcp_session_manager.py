@@ -382,7 +382,7 @@ class TestMCPSessionManager:
   @patch("google.adk.tools.mcp_tool.mcp_session_manager.stdio_client")
   @patch("google.adk.tools.mcp_tool.mcp_session_manager.AsyncExitStack")
   @patch("google.adk.tools.mcp_tool.mcp_session_manager.SessionContext")
-  async def test_create_and_close_session_in_different_task(
+  async def test_create_and_close_session_in_different_tasks(
     self, mock_stdio, mock_exit_stack_class, mock_session_context_class
   ):
     """Test creating and closing a session in different tasks."""
