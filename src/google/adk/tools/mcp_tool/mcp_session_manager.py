@@ -36,6 +36,8 @@ from mcp.client.stdio import stdio_client
 from mcp.client.streamable_http import streamablehttp_client
 from pydantic import BaseModel
 
+from .session_context import SessionContext
+
 logger = logging.getLogger('google_adk.' + __name__)
 
 
@@ -337,26 +339,18 @@ class MCPSessionManager:
 
       try:
         client = self._create_client(merged_headers)
+        is_stdio = isinstance(self._connection_params, StdioConnectionParams)
 
-        transports = await asyncio.wait_for(
-            exit_stack.enter_async_context(client),
+        session = await asyncio.wait_for(
+            exit_stack.enter_async_context(
+                SessionContext(
+                    client=client,
+                    timeout=timeout_in_seconds,
+                    is_stdio=is_stdio,
+                )
+            ),
             timeout=timeout_in_seconds,
         )
-        # The streamable http client returns a GetSessionCallback in addition to the
-        # read/write MemoryObjectStreams needed to build the ClientSession, we limit
-        # then to the two first values to be compatible with all clients.
-        if isinstance(self._connection_params, StdioConnectionParams):
-          session = await exit_stack.enter_async_context(
-              ClientSession(
-                  *transports[:2],
-                  read_timeout_seconds=timedelta(seconds=timeout_in_seconds),
-              )
-          )
-        else:
-          session = await exit_stack.enter_async_context(
-              ClientSession(*transports[:2])
-          )
-        await asyncio.wait_for(session.initialize(), timeout=timeout_in_seconds)
 
         # Store session and exit stack in the pool
         self._sessions[session_key] = (session, exit_stack)
