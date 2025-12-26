@@ -210,8 +210,7 @@ class TestMCPSessionManager:
           mock_exit_stack_class.return_value = mock_exit_stack
           mock_stdio.return_value = AsyncMock()
           mock_exit_stack.enter_async_context.side_effect = [
-              ("read", "write"),  # First call returns transports
-              mock_session,  # Second call returns session
+              mock_session,
           ]
           mock_session_class.return_value = mock_session
 
@@ -265,8 +264,7 @@ class TestMCPSessionManager:
     mock_exit_stack_class.return_value = mock_exit_stack
     mock_stdio.return_value = AsyncMock()
     mock_exit_stack.enter_async_context.side_effect = [
-        ("read", "write"),  # First call returns transports
-        mock_session,  # Second call returns session
+        mock_session,
     ]
     mock_session_class.return_value = mock_session
 
