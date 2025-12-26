@@ -336,6 +336,11 @@ class MCPSessionManager:
           if hasattr(self._connection_params, 'timeout')
           else None
       )
+      sse_read_timeout_in_seconds = (
+          self._connection_params.sse_read_timeout
+          if hasattr(self._connection_params, 'sse_read_timeout')
+          else None
+      )
 
       try:
         client = self._create_client(merged_headers)
@@ -346,6 +351,7 @@ class MCPSessionManager:
                 SessionContext(
                     client=client,
                     timeout=timeout_in_seconds,
+                    sse_read_timeout=sse_read_timeout_in_seconds,
                     is_stdio=is_stdio,
                 )
             ),

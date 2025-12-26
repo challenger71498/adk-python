@@ -53,6 +53,7 @@ class SessionContext:
       self,
       client: AsyncContextManager,
       timeout: Optional[float],
+      sse_read_timeout: Optional[float],
       is_stdio: bool = False,
   ):
     """
@@ -60,10 +61,13 @@ class SessionContext:
         client: An MCP client context manager (e.g., from streamablehttp_client,
             sse_client, or stdio_client).
         timeout: Timeout in seconds for connection and initialization.
+        sse_read_timeout: Timeout in seconds for reading data from the MCP SSE
+            server.
         is_stdio: Whether this is a stdio connection (affects read timeout).
     """
     self._client = client
     self._timeout = timeout
+    self._sse_read_timeout = sse_read_timeout
     self._is_stdio = is_stdio
     self._session: Optional[ClientSession] = None
     self._ready_event = asyncio.Event()
@@ -138,8 +142,13 @@ class SessionContext:
               )
           )
         else:
+          # For SSE and Streamable HTTP clients, use the sse_read_timeout
+          # instead of the connection timeout as the read_timeout for the session.
           session = await exit_stack.enter_async_context(
-              ClientSession(*transports[:2])
+              ClientSession(
+                *transports[:2],
+                read_timeout_seconds=timedelta(seconds=self._sse_read_timeout),
+              )
           )
         await asyncio.wait_for(session.initialize(), timeout=self._timeout)
         logger.debug('Session has been successfully initialized')
