@@ -102,6 +102,9 @@ class TestSessionContext:
       assert session == mock_session
       assert session_context.session == mock_session
 
+      # Verify initialize was called
+      assert mock_session._initialized
+
       # Verify task was created and is still running (waiting for close)
       assert session_context._task is not None
       assert not session_context._task.done()
