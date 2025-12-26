@@ -103,11 +103,14 @@ class SessionContext:
     self._close_event.set()
     if self._task:
       try:
-        await self._task
+        await asyncio.wait_for(self._task, timeout=self._timeout)
+      except asyncio.TimeoutError:
+        logger.warning('Failed to close MCP session: task timed out')
+        self._task.cancel()
       except asyncio.CancelledError:
         pass
       except Exception as e:
-        logger.warning(f'Error during session context cleanup: {e}')
+        logger.warning(f'Failed to close MCP session: {e}')
 
   async def __aenter__(self) -> ClientSession:
     return await self.start()
