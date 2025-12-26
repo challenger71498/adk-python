@@ -121,7 +121,7 @@ class TestSessionContext:
 
     # Verify ConnectionError message contains original exception
     assert 'Failed to create MCP session' in str(exc_info.value)
-    assert str(test_exception) in str(exc_info.value)
+    assert 'Connection failed' in str(exc_info.value)
 
     # Verify ready_event was set (in finally block)
     assert session_context._ready_event.is_set()
@@ -151,8 +151,8 @@ class TestSessionContext:
         await session_context.start()
 
       # Verify it's a ConnectionError about cancellation
-      # CancelledError is caught by cancelled() check first
-      assert 'MCP session creation cancelled' in str(exc_info.value) or 'Failed to create MCP session' in str(exc_info.value)
+      assert 'Failed to create MCP session' in str(exc_info.value)
+      assert 'task cancelled' in str(exc_info.value)
 
       # Verify ready_event was set
       assert session_context._ready_event.is_set()
