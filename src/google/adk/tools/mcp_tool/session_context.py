@@ -20,14 +20,15 @@ from datetime import timedelta
 import logging
 from typing import Any
 from typing import Optional
+from typing import AsyncContextManager
 
 from mcp import ClientSession
 
 logger = logging.getLogger('google_adk.' + __name__)
 
 
-class SessionLifecycle:
-  """Represents the lifecycle of a single MCP session within a dedicated task.
+class SessionContext:
+  """Represents the context of a single MCP session within a dedicated task.
 
   AnyIO's TaskGroup/CancelScope requires that the start and end of a scope
   occur within the same task. Since MCP clients use AnyIO internally, we need
@@ -50,12 +51,11 @@ class SessionLifecycle:
 
   def __init__(
       self,
-      client: Any,
+      client: AsyncContextManager,
       timeout: Optional[float],
       is_stdio: bool = False,
   ):
-    """Initializes the SessionLifecycle.
-
+    """
     Args:
         client: An MCP client context manager (e.g., from streamablehttp_client,
             sse_client, or stdio_client). The client's TaskGroup won't start
@@ -73,11 +73,11 @@ class SessionLifecycle:
 
   @property
   def session(self) -> Optional[ClientSession]:
-    """Returns the managed ClientSession, if available."""
+    """Get the managed ClientSession, if available."""
     return self._session
 
   async def start(self) -> ClientSession:
-    """Starts the lifecycle task and waits for the session to be ready.
+    """Start the runner and wait for the session to be ready.
 
     Returns:
         The initialized ClientSession.
@@ -85,7 +85,7 @@ class SessionLifecycle:
     Raises:
         ConnectionError: If session creation fails.
     """
-    self._task = asyncio.create_task(self._run_lifecycle())
+    self._task = asyncio.create_task(self._run())
     await self._ready_event.wait()
 
     if self._task.cancelled():
@@ -99,7 +99,7 @@ class SessionLifecycle:
     return self._session
 
   async def close(self):
-    """Signals the lifecycle task to close and waits for cleanup."""
+    """Signal the context task to close and wait for cleanup."""
     self._close_event.set()
     if self._task:
       try:
@@ -107,26 +107,16 @@ class SessionLifecycle:
       except asyncio.CancelledError:
         pass
       except Exception as e:
-        logger.warning('Error during session lifecycle cleanup: %s', e)
+        logger.warning(f'Error during session context cleanup: {e}')
 
   async def __aenter__(self) -> ClientSession:
-    """Async context manager entry point."""
     return await self.start()
 
   async def __aexit__(self, exc_type, exc_val, exc_tb):
-    """Async context manager exit point."""
     await self.close()
 
-  async def _run_lifecycle(self):
-    """Runs the complete session lifecycle within a single task.
-
-    This method:
-    1. Enters the client's async context (which starts its TaskGroup)
-    2. Creates and initializes the ClientSession
-    3. Signals that the session is ready
-    4. Waits for the close signal
-    5. Exits the async contexts (cleanup happens in the same task)
-    """
+  async def _run(self):
+    """Run the complete session context within a single task."""
     try:
       async with AsyncExitStack() as exit_stack:
         transports = await asyncio.wait_for(
@@ -149,6 +139,7 @@ class SessionLifecycle:
               ClientSession(*transports[:2])
           )
         await asyncio.wait_for(session.initialize(), timeout=self._timeout)
+        logger.debug('Session has been successfully initialized')
 
         self._session = session
         self._ready_event.set()
@@ -156,7 +147,7 @@ class SessionLifecycle:
         # Wait for close signal - the session remains valid while we wait
         await self._close_event.wait()
     except BaseException as e:
-      logger.error('Error during session lifecycle: %s', e)
+      logger.warning(f'Error on session runner task: {e}')
       raise
     finally:
       self._ready_event.set()
