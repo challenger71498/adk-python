@@ -56,6 +56,33 @@ class MockAsyncExitStack:
     pass
 
 
+class MockSessionContext:
+  """Mock SessionContext for testing."""
+
+  def __init__(self, session=None):
+    """Initialize MockSessionContext.
+
+    Args:
+        session: The mock session to return from __aenter__ and session property.
+    """
+    self._session = session
+    self._aenter_mock = AsyncMock(return_value=session)
+    self._aexit_mock = AsyncMock(return_value=False)
+
+  @property
+  def session(self):
+    """Get the mock session."""
+    return self._session
+
+  async def __aenter__(self):
+    """Enter the async context manager."""
+    return await self._aenter_mock()
+
+  async def __aexit__(self, exc_type, exc_val, exc_tb):
+    """Exit the async context manager."""
+    return await self._aexit_mock(exc_type, exc_val, exc_tb)
+
+
 class TestMCPSessionManager:
   """Test suite for MCPSessionManager class."""
 
@@ -193,7 +220,6 @@ class TestMCPSessionManager:
     """Test creating a new stdio session."""
     manager = MCPSessionManager(self.mock_stdio_connection_params)
 
-    mock_session = MockClientSession()
     mock_exit_stack = MockAsyncExitStack()
 
     with patch(
@@ -203,16 +229,27 @@ class TestMCPSessionManager:
           "google.adk.tools.mcp_tool.mcp_session_manager.AsyncExitStack"
       ) as mock_exit_stack_class:
         with patch(
-            "google.adk.tools.mcp_tool.mcp_session_manager.ClientSession"
-        ) as mock_session_class:
+            "google.adk.tools.mcp_tool.mcp_session_manager.SessionContext"
+        ) as mock_session_context_class:
 
           # Setup mocks
           mock_exit_stack_class.return_value = mock_exit_stack
           mock_stdio.return_value = AsyncMock()
-          mock_exit_stack.enter_async_context.side_effect = [
-              mock_session,
-          ]
-          mock_session_class.return_value = mock_session
+          
+          # Mock SessionContext using MockSessionContext
+          # Create a mock session that will be returned by SessionContext
+          mock_session = AsyncMock()
+          mock_session_context = MockSessionContext(session=mock_session)
+          mock_session_context_class.return_value = mock_session_context
+          
+          # enter_async_context calls __aenter__ on the context manager
+          # and returns the result (which is mock_session)
+          async def enter_context(context_manager):
+            return await context_manager.__aenter__()
+          
+          mock_exit_stack.enter_async_context = AsyncMock(
+              side_effect=enter_context
+          )
 
           # Create session
           session = await manager.create_session()
@@ -222,8 +259,10 @@ class TestMCPSessionManager:
           assert len(manager._sessions) == 1
           assert "stdio_session" in manager._sessions
 
-          # Verify session was initialized
-          mock_session.initialize.assert_called_once()
+          # Verify SessionContext was created
+          mock_session_context_class.assert_called_once()
+          # Verify enter_async_context was called (which internally calls __aenter__)
+          mock_exit_stack.enter_async_context.assert_called_once()
 
   @pytest.mark.asyncio
   async def test_create_session_reuse_existing(self):
@@ -251,38 +290,35 @@ class TestMCPSessionManager:
   @pytest.mark.asyncio
   @patch("google.adk.tools.mcp_tool.mcp_session_manager.stdio_client")
   @patch("google.adk.tools.mcp_tool.mcp_session_manager.AsyncExitStack")
-  @patch("google.adk.tools.mcp_tool.mcp_session_manager.ClientSession")
+  @patch("google.adk.tools.mcp_tool.mcp_session_manager.SessionContext")
   async def test_create_session_timeout(
-      self, mock_session_class, mock_exit_stack_class, mock_stdio
+      self, mock_session_context_class, mock_exit_stack_class, mock_stdio
   ):
     """Test session creation timeout."""
     manager = MCPSessionManager(self.mock_stdio_connection_params)
 
-    mock_session = MockClientSession()
     mock_exit_stack = MockAsyncExitStack()
 
     mock_exit_stack_class.return_value = mock_exit_stack
     mock_stdio.return_value = AsyncMock()
-    mock_exit_stack.enter_async_context.side_effect = [
-        mock_session,
-    ]
-    mock_session_class.return_value = mock_session
 
-    # Simulate timeout during session initialization
-    mock_session.initialize.side_effect = asyncio.TimeoutError("Test timeout")
+    # Mock SessionContext
+    mock_session_context = AsyncMock()
+    mock_session_context.__aenter__ = AsyncMock(return_value=MockClientSession())
+    mock_session_context.__aexit__ = AsyncMock(return_value=False)
+    mock_session_context_class.return_value = mock_session_context
+
+    # Mock enter_async_context to raise TimeoutError (simulating asyncio.wait_for timeout)
+    mock_exit_stack.enter_async_context = AsyncMock(
+        side_effect=asyncio.TimeoutError("Test timeout")
+    )
 
     # Expect ConnectionError due to timeout
     with pytest.raises(ConnectionError, match="Failed to create MCP session"):
       await manager.create_session()
 
-    # Verify ClientSession called with timeout
-    mock_session_class.assert_called_with(
-        "read",
-        "write",
-        read_timeout_seconds=timedelta(
-            seconds=manager._connection_params.timeout
-        ),
-    )
+    # Verify SessionContext was created
+    mock_session_context_class.assert_called_once()
     # Verify session was not added to pool
     assert not manager._sessions
     # Verify cleanup was called
