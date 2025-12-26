@@ -58,8 +58,7 @@ class SessionContext:
     """
     Args:
         client: An MCP client context manager (e.g., from streamablehttp_client,
-            sse_client, or stdio_client). The client's TaskGroup won't start
-            until its async context is entered.
+            sse_client, or stdio_client).
         timeout: Timeout in seconds for connection and initialization.
         is_stdio: Whether this is a stdio connection (affects read timeout).
     """
