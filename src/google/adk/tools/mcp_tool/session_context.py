@@ -103,6 +103,10 @@ class SessionContext:
   async def close(self):
     """Signal the context task to close and wait for cleanup."""
     self._close_event.set()
+
+    if not self._ready_event.is_set():
+      self._task.cancel()
+
     if self._task:
       try:
         await asyncio.wait_for(self._task, timeout=self._timeout)
