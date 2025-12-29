@@ -72,6 +72,7 @@ class SessionContext:
     self._ready_event = asyncio.Event()
     self._close_event = asyncio.Event()
     self._task: Optional[asyncio.Task] = None
+    self._task_lock = asyncio.Lock()
 
   @property
   def session(self) -> Optional[ClientSession]:
@@ -87,7 +88,14 @@ class SessionContext:
     Raises:
         ConnectionError: If session creation fails.
     """
-    self._task = asyncio.create_task(self._run())
+    async with self._task_lock:
+      if self._close_event.is_set():
+        raise ConnectionError(
+            'Failed to create MCP session: closed before start'
+        )
+
+      self._task = asyncio.create_task(self._run())
+
     await self._ready_event.wait()
 
     if self._task.cancelled():
@@ -102,21 +110,28 @@ class SessionContext:
 
   async def close(self):
     """Signal the context task to close and wait for cleanup."""
-    self._close_event.set()
+    # Set the close event to signal the task to close.
+    # Even if start has not been called, we need to set the close event
+    # to signal the task to close right away.
+    async with self._task_lock:
+      self._close_event.set()
+
+    # If start has not been called, only set the close event and return
+    if not self._task:
+      return
 
     if not self._ready_event.is_set():
       self._task.cancel()
 
-    if self._task:
-      try:
-        await asyncio.wait_for(self._task, timeout=self._timeout)
-      except asyncio.TimeoutError:
-        logger.warning('Failed to close MCP session: task timed out')
-        self._task.cancel()
-      except asyncio.CancelledError:
-        pass
-      except Exception as e:
-        logger.warning(f'Failed to close MCP session: {e}')
+    try:
+      await asyncio.wait_for(self._task, timeout=self._timeout)
+    except asyncio.TimeoutError:
+      logger.warning('Failed to close MCP session: task timed out')
+      self._task.cancel()
+    except asyncio.CancelledError:
+      pass
+    except Exception as e:
+      logger.warning(f'Failed to close MCP session: {e}')
 
   async def __aenter__(self) -> ClientSession:
     return await self.start()
