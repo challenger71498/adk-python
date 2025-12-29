@@ -89,6 +89,12 @@ class SessionContext:
         ConnectionError: If session creation fails.
     """
     async with self._task_lock:
+      if self._task:
+        logger.debug(
+            'Session has already been started, returning existing session'
+        )
+        return self._session
+
       if self._close_event.is_set():
         raise ConnectionError(
             'Failed to create MCP session: closed before start'
