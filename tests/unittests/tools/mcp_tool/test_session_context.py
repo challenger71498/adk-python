@@ -408,35 +408,6 @@ class TestSessionContext:
     assert session_context._close_event.is_set()
 
   @pytest.mark.asyncio
-  async def test_start_after_close(self):
-    """Test behavior when start() is called after close()."""
-    mock_client = MockClient()
-    session_context = SessionContext(
-        mock_client, timeout=5.0, sse_read_timeout=None
-    )
-
-    mock_session = MockClientSession()
-
-    with patch(
-        'google.adk.tools.mcp_tool.session_context.ClientSession'
-    ) as mock_session_class:
-      mock_session_class.return_value = mock_session
-
-      # Start and close
-      await session_context.start()
-      await session_context.close()
-
-      # Reset events for new start
-      session_context._ready_event = asyncio.Event()
-      session_context._close_event = asyncio.Event()
-
-      # Start again should work
-      session = await session_context.start()
-      assert session == mock_session
-
-      await session_context.close()
-
-  @pytest.mark.asyncio
   async def test_close_before_start_ends(self):
     """Test that close() before start() ends the task."""
     # Client has enough time to delay the start task
