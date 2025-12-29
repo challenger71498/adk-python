@@ -437,6 +437,49 @@ class TestSessionContext:
       await session_context.close()
 
   @pytest.mark.asyncio
+  async def test_close_before_start_ends(self):
+    """Test that close() before start() ends the task."""
+    # Client has enough time to delay the start task
+    mock_client = MockClient(delay_on_enter=10.0)
+    session_context = SessionContext(
+        mock_client, timeout=5.0, sse_read_timeout=None
+    )
+
+    start_task = asyncio.create_task(session_context.start())
+    await asyncio.sleep(0.1)
+    assert not start_task.done()
+
+    # Call close before start() ends the task
+    await session_context.close()
+    await asyncio.sleep(0.1)
+
+    assert start_task.done()
+    assert isinstance(
+        start_task.exception(), ConnectionError
+    ) and 'task cancelled' in str(start_task.exception())
+
+  @pytest.mark.asyncio
+  async def test_close_before_start_called(self):
+    """Test that close() before start() called sets the close event."""
+    mock_client = MockClient()
+    session_context = SessionContext(
+        mock_client, timeout=5.0, sse_read_timeout=None
+    )
+
+    # Call close() before start() called
+    await session_context.close()
+    await asyncio.sleep(0.1)
+
+    assert session_context._task is None
+    assert session_context._close_event.is_set()
+
+    with pytest.raises(ConnectionError) as exc_info:
+      await session_context.start()
+
+    assert 'closed before start' in str(exc_info.value)
+    assert session_context._task is None
+
+  @pytest.mark.asyncio
   async def test_session_property(self):
     """Test that session property returns the managed session."""
     mock_client = MockClient()
