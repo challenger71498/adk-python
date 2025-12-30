@@ -100,7 +100,8 @@ class SessionContext:
             'Failed to create MCP session: session already closed'
         )
 
-      self._task = asyncio.create_task(self._run())
+      if not self._task:
+        self._task = asyncio.create_task(self._run())
 
     await self._ready_event.wait()
 
