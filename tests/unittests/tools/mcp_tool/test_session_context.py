@@ -447,7 +447,7 @@ class TestSessionContext:
     with pytest.raises(ConnectionError) as exc_info:
       await session_context.start()
 
-    assert 'closed before start' in str(exc_info.value)
+    assert 'session already closed' in str(exc_info.value)
     assert session_context._task is None
 
   @pytest.mark.asyncio

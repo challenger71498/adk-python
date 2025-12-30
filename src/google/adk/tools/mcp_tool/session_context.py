@@ -97,7 +97,7 @@ class SessionContext:
 
       if self._close_event.is_set():
         raise ConnectionError(
-            'Failed to create MCP session: closed before start'
+            'Failed to create MCP session: session already closed'
         )
 
       self._task = asyncio.create_task(self._run())
