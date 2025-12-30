@@ -89,9 +89,9 @@ class SessionContext:
         ConnectionError: If session creation fails.
     """
     async with self._task_lock:
-      if self._task:
+      if self._session:
         logger.debug(
-            'Session has already been started, returning existing session'
+            'Session has already been created, returning existing session'
         )
         return self._session
 
